@@ -113,7 +113,9 @@ CREATE TABLE mock_notifications (
     description VARCHAR(200),
     sent_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
+    updated_at TIMESTAMP NOT NULL,
+    CONSTRAINT fk_mock_notifications_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id),
+    CONSTRAINT fk_mock_notifications_corp FOREIGN KEY (corp_id) REFERENCES corps(id)
 );
 
 CREATE INDEX idx_mock_notifications_invoice_id ON mock_notifications(invoice_id);
