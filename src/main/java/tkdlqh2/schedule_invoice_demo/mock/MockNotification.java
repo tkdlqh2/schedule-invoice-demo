@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import tkdlqh2.schedule_invoice_demo.common.BaseTimeEntity;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Mock 발송 로그
@@ -26,8 +27,8 @@ public class MockNotification extends BaseTimeEntity {
     @Column(nullable = false)
     private Long invoiceId;
 
-    @Column(nullable = false)
-    private Long corpId;
+    @Column(nullable = false, columnDefinition = "uuid")
+    private UUID corpId;
 
     @Column(nullable = false, length = 50)
     private String studentName;
@@ -47,7 +48,7 @@ public class MockNotification extends BaseTimeEntity {
     @Builder
     public MockNotification(
             Long invoiceId,
-            Long corpId,
+            UUID corpId,
             String studentName,
             String guardianPhone,
             Long amount,

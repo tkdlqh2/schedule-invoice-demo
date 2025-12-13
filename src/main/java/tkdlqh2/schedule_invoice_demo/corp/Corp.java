@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import tkdlqh2.schedule_invoice_demo.common.BaseTimeEntity;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "corps")
 @Getter
@@ -14,8 +16,9 @@ import tkdlqh2.schedule_invoice_demo.common.BaseTimeEntity;
 public class Corp extends BaseTimeEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "uuid")
+    private UUID id;
 
     @Column(nullable = false, length = 100)
     private String name;

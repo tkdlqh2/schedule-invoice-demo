@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import tkdlqh2.schedule_invoice_demo.common.BaseTimeEntity;
 
+import java.util.UUID;
+
 /**
  * 지갑 트랜잭션 (불변 원장)
  */
@@ -17,8 +19,9 @@ import tkdlqh2.schedule_invoice_demo.common.BaseTimeEntity;
 public class WalletTransaction extends BaseTimeEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "uuid")
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "wallet_id", nullable = false)
@@ -45,8 +48,8 @@ public class WalletTransaction extends BaseTimeEntity {
     /**
      * 환불의 경우 원본 사용 트랜잭션 ID (nullable)
      */
-    @Column(name = "related_transaction_id")
-    private Long relatedTransactionId;
+    @Column(name = "related_transaction_id", columnDefinition = "uuid")
+    private UUID relatedTransactionId;
 
     @Column(length = 200)
     private String reason;
@@ -57,7 +60,7 @@ public class WalletTransaction extends BaseTimeEntity {
             WalletTransactionType type,
             Long amount,
             Long invoiceId,
-            Long relatedTransactionId,
+            UUID relatedTransactionId,
             String reason
     ) {
         this.wallet = wallet;
@@ -100,7 +103,7 @@ public class WalletTransaction extends BaseTimeEntity {
             Wallet wallet,
             Long amount,
             Long invoiceId,
-            Long relatedTransactionId
+            UUID relatedTransactionId
     ) {
         return WalletTransaction.builder()
                 .wallet(wallet)
