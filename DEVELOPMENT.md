@@ -197,7 +197,8 @@ Body:
 {
   "scheduleType": "RECURRING",
   "scheduledAt": "2025-12-10T10:00:00",
-  "cronExpression": "0 0 10 10 * ?",
+  "intervalUnit": "MONTH",
+  "intervalValue": 1,
   "studentName": "홍길동",
   "guardianPhone": "010-1111-2222",
   "amount": 50000,
@@ -207,13 +208,26 @@ Body:
 
 * scheduleType: `ONCE` (1회) 또는 `RECURRING` (반복)
 * scheduledAt: 첫 실행 시각 (ONCE인 경우 해당 시각에만 실행)
-* cronExpression: RECURRING일 때만 사용 (다음 실행 시각 계산용)
+* intervalUnit: RECURRING일 때만 사용 (`DAY`, `WEEK`, `MONTH`, `YEAR`)
+* intervalValue: RECURRING일 때만 사용 (반복 주기 값, 예: 1=매 단위마다, 2=2단위마다)
 
 Flow:
 * InvoiceScheduleGroup 생성 (청구서 템플릿 정보 포함)
 * InvoiceSchedule(READY) 생성
     * ONCE면 1개만, scheduledAt에 실행
-    * RECURRING이면 scheduledAt부터 시작하여 cron 표현식으로 반복
+    * RECURRING이면 scheduledAt부터 시작하여 intervalUnit/intervalValue로 반복
+
+#### ScheduleGroup 관리 정책
+
+> **중요: ScheduleGroup은 수정(UPDATE) 불가**
+> * ScheduleGroup은 **생성(CREATE)과 삭제(DELETE)만 가능**
+> * 스케줄 내용을 변경하려면 기존 ScheduleGroup을 삭제하고 새로 생성
+> * 이유: 이미 실행된 스케줄의 이력과 향후 스케줄의 일관성 보장
+> * API:
+>   * 생성: `POST /app/corps/{corpId}/invoice-schedules`
+>   * 조회: `GET /app/corps/{corpId}/invoice-schedules`
+>   * 삭제: `DELETE /app/corps/{corpId}/invoice-schedules/{scheduleGroupId}`
+>   * ~~수정: PUT/PATCH 엔드포인트 제공하지 않음~~
 
 ---
 
@@ -239,7 +253,7 @@ Flow (중요):
        * Invoice 생성 (ScheduleGroup의 템플릿 정보 사용)
        * MockNotification 생성
        * 상태 변경: `PROCESSING → COMPLETED`
-       * RECURRING인 경우: 다음 InvoiceSchedule 생성 (cron 기반 nextScheduledAt 계산)
+       * RECURRING인 경우: 다음 InvoiceSchedule 생성 (intervalUnit/intervalValue 기반 nextScheduledAt 계산)
    * catch:
        * Wallet 차감 성공 후 실패한 경우: INVOICE_REFUND (+amount, relatedTransactionId)
        * 상태 변경: `PROCESSING → FAILED`
