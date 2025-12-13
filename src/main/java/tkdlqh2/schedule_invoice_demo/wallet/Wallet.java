@@ -22,6 +22,10 @@ public class Wallet extends BaseTimeEntity {
     @JoinColumn(name = "corp_id", nullable = false, unique = true)
     private Corp corp;
 
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     @Column(nullable = false)
     private Long balance = 0L;
 
