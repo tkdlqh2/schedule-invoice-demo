@@ -75,6 +75,10 @@ public class WalletTransaction extends BaseTimeEntity {
      * 무료 충전 트랜잭션 생성
      */
     public static WalletTransaction createFreeCharge(Wallet wallet, Long amount, String reason) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("충전 금액은 0보다 커야 합니다.");
+        }
+
         return WalletTransaction.builder()
                 .wallet(wallet)
                 .type(WalletTransactionType.FREE_CHARGE)
@@ -87,6 +91,10 @@ public class WalletTransaction extends BaseTimeEntity {
      * 청구서 사용 트랜잭션 생성
      */
     public static WalletTransaction createInvoiceUse(Wallet wallet, Long amount, Long invoiceId) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("사용 금액은 0보다 커야 합니다.");
+        }
+
         return WalletTransaction.builder()
                 .wallet(wallet)
                 .type(WalletTransactionType.INVOICE_USE)
@@ -105,6 +113,16 @@ public class WalletTransaction extends BaseTimeEntity {
             Long invoiceId,
             UUID relatedTransactionId
     ) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("환불 금액은 0보다 커야 합니다.");
+        }
+        if (invoiceId == null) {
+            throw new IllegalArgumentException("환불 시 invoiceId는 필수입니다.");
+        }
+        if (relatedTransactionId == null) {
+            throw new IllegalArgumentException("환불 시 relatedTransactionId는 필수입니다.");
+        }
+
         return WalletTransaction.builder()
                 .wallet(wallet)
                 .type(WalletTransactionType.INVOICE_REFUND)
