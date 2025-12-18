@@ -2,11 +2,11 @@ package tkdlqh2.schedule_invoice_demo.wallet;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import tkdlqh2.schedule_invoice_demo.common.BaseTimeEntity;
 import tkdlqh2.schedule_invoice_demo.corp.Corp;
+import tkdlqh2.schedule_invoice_demo.wallet.command.CreateWalletCommand;
 
 @Entity
 @Table(name = "wallets")
@@ -29,10 +29,11 @@ public class Wallet extends BaseTimeEntity {
     @Column(nullable = false)
     private Long balance = 0L;
 
-    @Builder
-    public Wallet(Corp corp) {
-        this.corp = corp;
-        this.balance = 0L;
+    public static Wallet create(CreateWalletCommand command) {
+        Wallet wallet = new Wallet();
+        wallet.corp = command.corp();
+        wallet.balance = 0L;
+        return wallet;
     }
 
     /**
