@@ -2,10 +2,10 @@ package tkdlqh2.schedule_invoice_demo.corp;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import tkdlqh2.schedule_invoice_demo.common.BaseTimeEntity;
+import tkdlqh2.schedule_invoice_demo.corp.command.CreateCorpCommand;
 
 import java.util.UUID;
 
@@ -29,10 +29,11 @@ public class Corp extends BaseTimeEntity {
     @Column(length = 20)
     private String contactPhone;
 
-    @Builder
-    public Corp(String name, String businessNumber, String contactPhone) {
-        this.name = name;
-        this.businessNumber = businessNumber;
-        this.contactPhone = contactPhone;
+    public static Corp create(CreateCorpCommand command) {
+        Corp corp = new Corp();
+        corp.name = command.name();
+        corp.businessNumber = command.businessNumber();
+        corp.contactPhone = command.contactPhone();
+        return corp;
     }
 }
