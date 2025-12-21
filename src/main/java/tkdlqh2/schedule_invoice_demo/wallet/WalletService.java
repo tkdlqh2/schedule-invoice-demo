@@ -26,12 +26,19 @@ public class WalletService {
     @Transactional
     public void chargeFreePoints(ChargeFreeCreditCommand command) {
         // Wallet 조회 또는 생성
-        Wallet wallet = walletRepository.findByCorpIdWithLock (command.corp().getId())
-                .orElseGet(() -> {
-                    CreateWalletCommand createCommand = new CreateWalletCommand(command.corp());
-                    Wallet newWallet = Wallet.create(createCommand);
-                    return walletRepository.save(newWallet);
-                });
+        Wallet wallet;
+        try {
+            wallet = walletRepository.findByCorpIdWithLock (command.corp().getId())
+                    .orElseGet(() -> {
+                        CreateWalletCommand createCommand = new CreateWalletCommand(command.corp());
+                        Wallet newWallet = Wallet.create(createCommand);
+                        return walletRepository.save(newWallet);
+                    });
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // 동시 생성 시도로 인한 충돌 - 다시 조회
+            wallet = walletRepository.findByCorpIdWithLock(command.corp().getId())
+                    .orElseThrow(() -> new IllegalStateException("Wallet 생성 실패", e));
+        }
 
         // 잔액 증가
         wallet.increaseBalance(command.amount());
