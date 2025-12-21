@@ -26,7 +26,7 @@ public class WalletService {
     @Transactional
     public void chargeFreePoints(ChargeFreeCreditCommand command) {
         // Wallet 조회 또는 생성
-        Wallet wallet = walletRepository.findByCorp(command.corp())
+        Wallet wallet = walletRepository.findByCorpIdWithLock (command.corp().getId())
                 .orElseGet(() -> {
                     CreateWalletCommand createCommand = new CreateWalletCommand(command.corp());
                     Wallet newWallet = Wallet.create(createCommand);
