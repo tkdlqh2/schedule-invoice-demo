@@ -1,6 +1,6 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '3.4.1'
+	id 'org.springframework.boot' version '3.5.9'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -34,9 +34,7 @@ dependencies {
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'
 
-	testImplementation('org.springframework.boot:spring-boot-starter-test') {
-		exclude group: 'org.mockito', module: 'mockito-core'
-	}
+	testImplementation('org.springframework.boot:spring-boot-starter-test')
 
 	// TestContainers
 	testImplementation 'org.testcontainers:testcontainers:1.20.4'
