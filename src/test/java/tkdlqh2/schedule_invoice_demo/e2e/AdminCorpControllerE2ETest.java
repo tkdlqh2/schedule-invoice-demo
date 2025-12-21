@@ -83,6 +83,7 @@ class AdminCorpControllerE2ETest extends BaseE2ETest {
     void listCorps() {
         // when & then - 3개의 기본 데이터가 있어야 함
         given()
+                .spec(spec)
         .when()
                 .get("/admin/corps")
         .then()
@@ -105,6 +106,7 @@ class AdminCorpControllerE2ETest extends BaseE2ETest {
 
         // when & then
         given()
+                .spec(spec)
                 .pathParam("corpId", corpId)
         .when()
                 .get("/admin/corps/{corpId}")
@@ -121,6 +123,7 @@ class AdminCorpControllerE2ETest extends BaseE2ETest {
     void getCorp_NotFound() {
         // when & then
         given()
+                .spec(spec)
                 .pathParam("corpId", "00000000-0000-0000-0000-000000000000")
         .when()
                 .get("/admin/corps/{corpId}")
