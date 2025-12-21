@@ -1,6 +1,7 @@
 package tkdlqh2.schedule_invoice_demo.corp;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tkdlqh2.schedule_invoice_demo.corp.command.CreateCorpCommand;
@@ -19,19 +20,24 @@ public class CorpService {
 
     /**
      * 기관 생성
+     *
+     * Race condition 방지:
+     * - DB UNIQUE 제약을 통해 사업자 번호 중복 방지
+     * - DataIntegrityViolationException을 catch하여 비즈니스 예외로 변환
      */
     @Transactional
     public Corp createCorp(CreateCorpCommand command) {
-        // 사업자 번호 중복 체크
-        if (command.businessNumber() != null) {
-            corpRepository.findByBusinessNumber(command.businessNumber())
-                    .ifPresent(c -> {
-                        throw new IllegalArgumentException("이미 존재하는 사업자 번호입니다: " + command.businessNumber());
-                    });
+        try {
+            Corp corp = Corp.create(command);
+            return corpRepository.save(corp);
+        } catch (DataIntegrityViolationException e) {
+            // UNIQUE 제약 위반 시 (사업자 번호 중복)
+            if (e.getMessage() != null && e.getMessage().contains("uk_corps_business_number")) {
+                throw new IllegalArgumentException("이미 존재하는 사업자 번호입니다: " + command.businessNumber());
+            }
+            // 다른 데이터 무결성 위반
+            throw e;
         }
-
-        Corp corp = Corp.create(command);
-        return corpRepository.save(corp);
     }
 
     /**
