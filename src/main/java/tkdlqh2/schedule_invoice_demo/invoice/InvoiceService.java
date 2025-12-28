@@ -31,8 +31,9 @@ public class InvoiceService {
      * 2. Wallet 조회 및 잔액 확인 (락 획득)
      * 3. Invoice 생성 (PENDING)
      * 4. Wallet 차감 + WalletTransaction 생성 (INVOICE_USE)
-     * 5. 발송 처리
-     * 6. Invoice 상태 변경 (SENT)
+     * 5. 발송 시도
+     * 6-a. 발송 성공: Invoice 상태 변경 (SENT)
+     * 6-b. 발송 실패: Invoice 상태 변경 (FAILED) + Wallet 환불
      * 7. 응답 반환
      */
     @Transactional
@@ -58,18 +59,36 @@ public class InvoiceService {
         // 4. Wallet 차감 + WalletTransaction 생성 (INVOICE_USE)
         wallet.decreaseBalance(command.amount());
 
-        WalletTransaction transaction = WalletTransaction.createInvoiceUse(
+        WalletTransaction useTransaction = WalletTransaction.createInvoiceUse(
                 wallet,
                 command.amount(),
                 invoice.getId()
         );
-        walletTransactionRepository.save(transaction);
+        useTransaction = walletTransactionRepository.save(useTransaction);
 
-        // 5. 발송 처리
-        invoiceNotificationSender.send(invoice);
+        // 5. 발송 시도
+        boolean sendSuccess = invoiceNotificationSender.send(invoice);
 
-        // 6. Invoice 상태 변경 (SENT)
-        invoice.markAsSent();
+        // 6. 발송 결과에 따른 처리
+        if (sendSuccess) {
+            // 6-a. 발송 성공: Invoice 상태 변경 (SENT)
+            invoice.markAsSent();
+        } else {
+            // 6-b. 발송 실패: Invoice 상태 변경 (FAILED) + Wallet 환불
+            invoice.markAsFailed();
+
+            // Wallet 환불
+            wallet.increaseBalance(command.amount());
+
+            // 환불 트랜잭션 생성
+            WalletTransaction refundTransaction = WalletTransaction.createInvoiceRefund(
+                    wallet,
+                    command.amount(),
+                    invoice.getId(),
+                    useTransaction.getId()  // 원본 사용 트랜잭션 ID
+            );
+            walletTransactionRepository.save(refundTransaction);
+        }
 
         // 7. 응답 반환
         return SendInvoiceImmediatelyResponse.from(invoice, wallet.getBalance());

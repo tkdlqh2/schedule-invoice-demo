@@ -13,6 +13,7 @@ public interface InvoiceNotificationSender {
      * Invoice 발송 처리
      *
      * @param invoice 발송할 Invoice
+     * @return 발송 성공 여부 (true: 성공, false: 실패)
      */
-    void send(Invoice invoice);
+    boolean send(Invoice invoice);
 }
