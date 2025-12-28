@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import tkdlqh2.schedule_invoice_demo.common.BaseTimeEntity;
 import tkdlqh2.schedule_invoice_demo.corp.Corp;
+import tkdlqh2.schedule_invoice_demo.invoice.command.SendInvoiceImmediatelyCommand;
 
 /**
  * 청구서
@@ -47,7 +48,7 @@ public class Invoice extends BaseTimeEntity {
     @Column(name = "schedule_id")
     private Long scheduleId;
 
-    @Builder
+    @Builder(access = AccessLevel.PROTECTED)
     public Invoice(
             Corp corp,
             String studentName,
@@ -63,6 +64,10 @@ public class Invoice extends BaseTimeEntity {
         this.amount = amount;
         this.description = description;
         this.scheduleId = scheduleId;
+    }
+
+    public static Invoice createForImmediateSend(SendInvoiceImmediatelyCommand command, Corp corp) {
+        return new Invoice(corp, command.studentName(), command.guardianPhone(), command.amount(), command.description(), null);
     }
 
     /**
