@@ -1,7 +1,9 @@
 package tkdlqh2.schedule_invoice_demo.outbox;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
@@ -20,12 +22,15 @@ public class OutboxEventProcessorService {
 
     private final OutboxEventRepository outboxEventRepository;
     private final Map<OutboxEventType, OutboxEventHandler> handlerMap;
+    private final OutboxEventProcessorService self;
 
     public OutboxEventProcessorService(
             OutboxEventRepository outboxEventRepository,
-            List<OutboxEventHandler> handlers
+            List<OutboxEventHandler> handlers,
+            @Lazy OutboxEventProcessorService self
     ) {
         this.outboxEventRepository = outboxEventRepository;
+        this.self = self;
         this.handlerMap = handlers.stream()
                 .flatMap(handler ->
                     Arrays.stream(OutboxEventType.values())
@@ -36,7 +41,7 @@ public class OutboxEventProcessorService {
     }
 
     /**
-     * 모든 PENDING 이벤트를 트랜잭션 내에서 조회 및 처리
+     * 모든 PENDING 이벤트를 트랜잭션 내에서 조회
      */
     @Transactional
     public void processAllPendingEvents() {
@@ -44,7 +49,8 @@ public class OutboxEventProcessorService {
 
         for (OutboxEvent event : pendingEvents) {
             try {
-                processEvent(event);
+                // 각 이벤트를 별도의 트랜잭션으로 처리 (self-invocation 회피)
+                self.processEventInNewTransaction(event);
             } catch (Exception e) {
                 log.error("Failed to process outbox event: {}", event.getId(), e);
             }
@@ -52,9 +58,14 @@ public class OutboxEventProcessorService {
     }
 
     /**
-     * 개별 이벤트 처리
+     * 개별 이벤트 처리 (새로운 트랜잭션)
+     * <p>
+     * REQUIRES_NEW: 항상 새로운 트랜잭션 생성
+     * - 각 이벤트 처리가 독립적인 트랜잭션
+     * - 한 이벤트 실패가 다른 이벤트에 영향 없음
      */
-    private void processEvent(OutboxEvent event) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void processEventInNewTransaction(OutboxEvent event) {
         log.info("Processing outbox event: {} (type: {}, aggregateId: {})",
                 event.getId(), event.getEventType(), event.getAggregateId());
 
@@ -85,10 +96,28 @@ public class OutboxEventProcessorService {
             event.fail(e.getMessage());
             outboxEventRepository.save(event);
 
-            // 최대 재시도 초과 시 보상 트랜잭션 수행
+            // 최대 재시도 초과 시 보상 트랜잭션 수행 (별도 트랜잭션)
             if (!event.canRetry()) {
-                handler.compensate(event);
+                try {
+                    self.executeCompensation(event, handler);
+                } catch (Exception compensationError) {
+                    log.error("Compensation failed for event: {}", event.getId(), compensationError);
+                }
             }
         }
+    }
+
+    /**
+     * 보상 트랜잭션 실행 (새로운 트랜잭션)
+     * <p>
+     * REQUIRES_NEW: 항상 새로운 독립적인 트랜잭션 생성
+     * - 보상 트랜잭션 실패가 원래 이벤트 실패 저장에 영향 없음
+     * - 원래 트랜잭션은 이미 커밋된 상태
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void executeCompensation(OutboxEvent event, OutboxEventHandler handler) {
+        log.info("Executing compensation for event: {}", event.getId());
+        handler.compensate(event);
+        log.info("Compensation completed for event: {}", event.getId());
     }
 }
