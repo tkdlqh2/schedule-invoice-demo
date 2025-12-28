@@ -14,12 +14,12 @@ INSERT INTO corps (id, name, business_number, contact_phone, created_at, updated
 VALUES
     ('11111111-1111-1111-1111-111111111111', '잔액 부족 테스트 기관', '111-11-11111', '010-1111-1111', NOW(), NOW());
 
--- 테스트용 Wallet 데이터 (잔액 100원만 보유)
+-- 테스트용 Wallet 데이터 (건당 100원 비용에 잔액 50원만 보유 - 부족)
 INSERT INTO wallets (corp_id, balance, created_at, updated_at)
 VALUES
-    ('11111111-1111-1111-1111-111111111111', 100, NOW(), NOW());
+    ('11111111-1111-1111-1111-111111111111', 50, NOW(), NOW());
 
--- 테스트용 InvoiceScheduleGroup 데이터 (50000원 청구, ID 명시)
+-- 테스트용 InvoiceScheduleGroup 데이터 (ID 명시)
 INSERT INTO invoice_schedule_groups (id, corp_id, schedule_type, interval_unit, interval_value, student_name, guardian_phone, amount, description, created_at, updated_at)
 VALUES
     (1, '11111111-1111-1111-1111-111111111111', 'ONCE', NULL, NULL, '홍길동', '010-1234-5678', 50000, '잔액 부족 테스트', NOW(), NOW());

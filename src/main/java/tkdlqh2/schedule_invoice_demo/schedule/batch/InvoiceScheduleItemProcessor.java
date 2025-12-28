@@ -24,7 +24,7 @@ import java.util.UUID;
  * <p>
  * 각 스케줄에 대해:
  * 1. Invoice 생성
- * 2. Wallet 차감 및 트랜잭션 생성
+ * 2. Wallet 차감 및 트랜잭션 생성 (건당 100원 고정 비용)
  * 3. OutboxEvent 생성
  * 4. 다음 스케줄 생성 (RECURRING인 경우)
  */
@@ -32,6 +32,11 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 public class InvoiceScheduleItemProcessor implements ItemProcessor<InvoiceSchedule, ScheduleProcessResult> {
+
+    /**
+     * 청구서 발송 건당 비용 (100원)
+     */
+    private static final long INVOICE_SEND_COST = 100L;
 
     private final InvoiceRepository invoiceRepository;
     private final WalletRepository walletRepository;
@@ -56,10 +61,10 @@ public class InvoiceScheduleItemProcessor implements ItemProcessor<InvoiceSchedu
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Wallet이 존재하지 않습니다. Corp ID: " + group.getCorp().getId()));
 
-            if (!wallet.hasEnoughBalance(group.getAmount())) {
+            if (!wallet.hasEnoughBalance(INVOICE_SEND_COST)) {
                 throw new IllegalArgumentException(
                         String.format("잔액이 부족합니다. 현재 잔액: %d, 필요 금액: %d",
-                                wallet.getBalance(), group.getAmount())
+                                wallet.getBalance(), INVOICE_SEND_COST)
                 );
             }
 
@@ -74,12 +79,12 @@ public class InvoiceScheduleItemProcessor implements ItemProcessor<InvoiceSchedu
             );
             invoice = invoiceRepository.save(invoice);
 
-            // 4. Wallet 차감 + WalletTransaction 생성 (INVOICE_USE)
-            wallet.decreaseBalance(group.getAmount());
+            // 4. Wallet 차감 + WalletTransaction 생성 (INVOICE_USE, 건당 100원)
+            wallet.decreaseBalance(INVOICE_SEND_COST);
 
             WalletTransaction useTransaction = WalletTransaction.createInvoiceUse(
                     wallet,
-                    group.getAmount(),
+                    INVOICE_SEND_COST,
                     invoice.getId()
             );
             useTransaction = walletTransactionRepository.save(useTransaction);

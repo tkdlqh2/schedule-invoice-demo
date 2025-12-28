@@ -15,11 +15,11 @@ VALUES
     ('11111111-1111-1111-1111-111111111111', '테스트 기관 A', '111-11-11111', '010-1111-1111', NOW(), NOW()),
     ('22222222-2222-2222-2222-222222222222', '테스트 기관 B', '222-22-22222', '010-2222-2222', NOW(), NOW());
 
--- 테스트용 Wallet 데이터
+-- 테스트용 Wallet 데이터 (건당 100원 비용 - 3개 스케줄 처리에 충분)
 INSERT INTO wallets (corp_id, balance, created_at, updated_at)
 VALUES
-    ('11111111-1111-1111-1111-111111111111', 100000, NOW(), NOW()),
-    ('22222222-2222-2222-2222-222222222222', 50000, NOW(), NOW());
+    ('11111111-1111-1111-1111-111111111111', 100000, NOW(), NOW()),  -- Schedule 1, 2 처리 가능 (200원 필요)
+    ('22222222-2222-2222-2222-222222222222', 50000, NOW(), NOW());   -- Schedule 3 처리 가능 (100원 필요)
 
 -- 테스트용 InvoiceScheduleGroup 데이터 (ID 명시)
 INSERT INTO invoice_schedule_groups (id, corp_id, schedule_type, interval_unit, interval_value, student_name, guardian_phone, amount, description, created_at, updated_at)
