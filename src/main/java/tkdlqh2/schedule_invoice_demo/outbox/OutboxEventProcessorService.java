@@ -37,7 +37,11 @@ public class OutboxEventProcessorService {
                         .filter(handler::supports)
                         .map(type -> Map.entry(type, handler))
                 )
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (first, second) -> first
+                ));
     }
 
     /**
