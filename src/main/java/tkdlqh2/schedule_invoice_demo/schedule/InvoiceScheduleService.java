@@ -25,26 +25,12 @@ public class InvoiceScheduleService {
      */
     @Transactional
     public CreateInvoiceScheduleResponse createInvoiceSchedule(CreateInvoiceScheduleCommand command) {
-        // 1. InvoiceScheduleGroup 생성
-        InvoiceScheduleGroup scheduleGroup = InvoiceScheduleGroup.builder()
-                .corp(command.corp())
-                .scheduleType(command.scheduleType())
-                .intervalUnit(command.intervalUnit())
-                .intervalValue(command.intervalValue())
-                .studentName(command.studentName())
-                .guardianPhone(command.guardianPhone())
-                .amount(command.amount())
-                .description(command.description())
-                .build();
-
+        // 1. InvoiceScheduleGroup 생성 (Factory Pattern)
+        InvoiceScheduleGroup scheduleGroup = InvoiceScheduleGroup.from(command);
         scheduleGroup = scheduleGroupRepository.save(scheduleGroup);
 
-        // 2. 첫 InvoiceSchedule 생성 (READY 상태)
-        InvoiceSchedule firstSchedule = InvoiceSchedule.builder()
-                .scheduleGroup(scheduleGroup)
-                .scheduledAt(command.scheduledAt())
-                .build();
-
+        // 2. 첫 InvoiceSchedule 생성 (Factory Pattern)
+        InvoiceSchedule firstSchedule = InvoiceSchedule.createFirst(scheduleGroup, command.scheduledAt());
         firstSchedule = scheduleRepository.save(firstSchedule);
 
         // 3. 응답 생성

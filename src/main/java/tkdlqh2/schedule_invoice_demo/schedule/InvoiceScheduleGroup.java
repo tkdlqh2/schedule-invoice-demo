@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import tkdlqh2.schedule_invoice_demo.common.BaseTimeEntity;
 import tkdlqh2.schedule_invoice_demo.corp.Corp;
+import tkdlqh2.schedule_invoice_demo.schedule.command.CreateInvoiceScheduleCommand;
 
 /**
  * 청구서 스케줄 그룹 (템플릿 정보 포함)
@@ -56,7 +57,7 @@ public class InvoiceScheduleGroup extends BaseTimeEntity {
     @Column(length = 200)
     private String description;
 
-    @Builder
+    @Builder(access = AccessLevel.PRIVATE)
     public InvoiceScheduleGroup(
             Corp corp,
             ScheduleType scheduleType,
@@ -82,6 +83,22 @@ public class InvoiceScheduleGroup extends BaseTimeEntity {
                 throw new IllegalArgumentException("RECURRING 타입은 intervalUnit과 intervalValue(양수)가 필수입니다.");
             }
         }
+    }
+
+    /**
+     * Command로부터 InvoiceScheduleGroup 생성 (Factory Method)
+     */
+    public static InvoiceScheduleGroup from(CreateInvoiceScheduleCommand command) {
+        return InvoiceScheduleGroup.builder()
+                .corp(command.corp())
+                .scheduleType(command.scheduleType())
+                .intervalUnit(command.intervalUnit())
+                .intervalValue(command.intervalValue())
+                .studentName(command.studentName())
+                .guardianPhone(command.guardianPhone())
+                .amount(command.amount())
+                .description(command.description())
+                .build();
     }
 
     /**

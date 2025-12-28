@@ -39,18 +39,8 @@ public class ScheduleController {
         // Corp 조회
         Corp corp = corpService.findCorpById(corpId);
 
-        // Request -> Command 변환
-        CreateInvoiceScheduleCommand command = new CreateInvoiceScheduleCommand(
-                corp,
-                request.scheduleType(),
-                request.scheduledAt(),
-                request.intervalUnit(),
-                request.intervalValue(),
-                request.studentName(),
-                request.guardianPhone(),
-                request.amount(),
-                request.description()
-        );
+        // Request -> Command 변환 (Factory Pattern)
+        CreateInvoiceScheduleCommand command = CreateInvoiceScheduleCommand.from(corp, request);
 
         // 스케줄 등록
         CreateInvoiceScheduleResponse response = scheduleService.createInvoiceSchedule(command);

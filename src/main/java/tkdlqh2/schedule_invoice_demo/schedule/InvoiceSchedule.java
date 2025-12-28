@@ -53,7 +53,7 @@ public class InvoiceSchedule extends BaseTimeEntity {
     @Column(length = 500)
     private String failureReason;
 
-    @Builder
+    @Builder(access = AccessLevel.PRIVATE)
     public InvoiceSchedule(
             InvoiceScheduleGroup scheduleGroup,
             LocalDateTime scheduledAt
@@ -61,6 +61,16 @@ public class InvoiceSchedule extends BaseTimeEntity {
         this.scheduleGroup = scheduleGroup;
         this.status = ScheduleStatus.READY;
         this.scheduledAt = scheduledAt;
+    }
+
+    /**
+     * 첫 번째 스케줄 생성 (Factory Method)
+     */
+    public static InvoiceSchedule createFirst(InvoiceScheduleGroup scheduleGroup, LocalDateTime scheduledAt) {
+        return InvoiceSchedule.builder()
+                .scheduleGroup(scheduleGroup)
+                .scheduledAt(scheduledAt)
+                .build();
     }
 
     /**
