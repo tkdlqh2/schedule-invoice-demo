@@ -82,8 +82,8 @@ public class OutboxEvent extends BaseTimeEntity {
     @Column(length = 1000)
     private String errorMessage;
 
-    @Builder
-    public OutboxEvent(
+    @Builder(access = AccessLevel.PROTECTED)
+    protected OutboxEvent(
             OutboxEventType eventType,
             String aggregateType,
             Long aggregateId,
@@ -97,6 +97,18 @@ public class OutboxEvent extends BaseTimeEntity {
         this.status = OutboxEventStatus.PENDING;
         this.retryCount = 0;
         this.maxRetryCount = maxRetryCount != null ? maxRetryCount : 3;
+    }
+
+    /**
+     * Invoice 발송 요청 이벤트 생성
+     */
+    public static OutboxEvent forInvoiceSendRequest(Long invoiceId) {
+        return OutboxEvent.builder()
+                .eventType(OutboxEventType.INVOICE_SEND_REQUESTED)
+                .aggregateType("INVOICE")
+                .aggregateId(invoiceId)
+                .maxRetryCount(3)
+                .build();
     }
 
     /**
