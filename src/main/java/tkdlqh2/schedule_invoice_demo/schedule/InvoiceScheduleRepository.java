@@ -2,6 +2,7 @@ package tkdlqh2.schedule_invoice_demo.schedule;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -34,7 +35,8 @@ public interface InvoiceScheduleRepository extends JpaRepository<InvoiceSchedule
      * 실행 대기 중인 스케줄 조회 (페이징) - Spring Batch용
      * scheduleGroup과 corp를 JOIN FETCH하여 함께 로드
      */
-    @Query("SELECT s FROM InvoiceSchedule s JOIN FETCH s.scheduleGroup sg JOIN FETCH sg.corp WHERE s.status = :status AND s.scheduledAt <= :executeAt")
+    @EntityGraph(attributePaths = {"scheduleGroup", "scheduleGroup.corp"})
+    @Query("SELECT s FROM InvoiceSchedule s WHERE s.status = :status AND s.scheduledAt <= :executeAt")
     Page<InvoiceSchedule> findByStatusAndScheduledAtBeforeOrderByScheduledAtAsc(
             @Param("status") ScheduleStatus status,
             @Param("executeAt") LocalDateTime executeAt,

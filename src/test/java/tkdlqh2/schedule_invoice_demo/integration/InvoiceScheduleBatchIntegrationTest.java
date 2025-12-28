@@ -155,14 +155,6 @@ class InvoiceScheduleBatchIntegrationTest extends BaseIntegrationTest {
         // then
         assertEquals(BatchStatus.COMPLETED, jobExecution.getStatus());
 
-        // 모든 스케줄 조회 (새로 추가된 데이터 확인)
-        List<InvoiceSchedule> allSchedules = scheduleRepository.findAll();
-        System.out.println("=== 전체 스케줄 목록 ===");
-        for (InvoiceSchedule s : allSchedules) {
-            System.out.println(String.format("ID=%d, GroupID=%d, ScheduledAt=%s, Status=%s",
-                    s.getId(), s.getScheduleGroup().getId(), s.getScheduledAt(), s.getStatus()));
-        }
-
         // 다음 스케줄이 생성되었는지 확인
         long newScheduleCount = scheduleRepository.findByScheduleGroupId(scheduleGroupId).size();
         assertTrue(newScheduleCount > initialScheduleCount,
@@ -177,7 +169,7 @@ class InvoiceScheduleBatchIntegrationTest extends BaseIntegrationTest {
                 .orElseThrow(() -> new AssertionError("다음 스케줄이 생성되어야 합니다."));
 
         assertEquals(LocalDateTime.parse("2025-12-17T09:00"), nextSchedule.getScheduledAt(),
-                "다음 스케줄의 실행 시각이 1주 후여야 합니다.");
+                "다음 스케줄의 실행 시각이 이전 스케줄로부터 1주 후여야 합니다.");
     }
 
     @Test
@@ -220,7 +212,7 @@ class InvoiceScheduleBatchIntegrationTest extends BaseIntegrationTest {
         // then
         assertEquals(BatchStatus.COMPLETED, jobExecution.getStatus());
 
-        // 2025-12-15 이후의 스케줄은 READY 상태로 남아있어야 함
+        // 2025-12-10 이후의 스케줄은 READY 상태로 남아있어야 함
         List<InvoiceSchedule> readySchedules = scheduleRepository.findByStatus(ScheduleStatus.READY);
         assertTrue(readySchedules.stream()
                         .anyMatch(s -> s.getScheduledAt().isAfter(executeAt)),
