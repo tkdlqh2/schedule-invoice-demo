@@ -38,8 +38,9 @@ public class InvoiceScheduleService {
     }
 
     /**
-     * 스케줄 그룹 삭제
-     * - 스케줄 그룹을 삭제하면 연관된 스케줄도 함께 삭제됨 (Cascade)
+     * 스케줄 그룹 삭제 (Soft Delete)
+     * - 실제로 삭제하지 않고 deleted_at 필드를 설정합니다
+     * - 연관된 invoice_schedules는 그대로 유지됩니다 (향후 통계/이력 조회용)
      */
     @Transactional
     public void deleteScheduleGroup(Long scheduleGroupId, Corp corp) {
@@ -51,7 +52,8 @@ public class InvoiceScheduleService {
             throw new IllegalArgumentException("다른 기관의 스케줄 그룹은 삭제할 수 없습니다.");
         }
 
-        scheduleGroupRepository.delete(scheduleGroup);
+        // Soft Delete 수행
+        scheduleGroup.softDelete();
     }
 
     /**

@@ -5,9 +5,12 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Where;
 import tkdlqh2.schedule_invoice_demo.common.BaseTimeEntity;
 import tkdlqh2.schedule_invoice_demo.corp.Corp;
 import tkdlqh2.schedule_invoice_demo.schedule.command.CreateInvoiceScheduleCommand;
+
+import java.time.LocalDateTime;
 
 /**
  * 청구서 스케줄 그룹 (템플릿 정보 포함)
@@ -17,6 +20,7 @@ import tkdlqh2.schedule_invoice_demo.schedule.command.CreateInvoiceScheduleComma
 @Table(name = "invoice_schedule_groups")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Where(clause = "deleted_at IS NULL")
 public class InvoiceScheduleGroup extends BaseTimeEntity {
 
     @Id
@@ -56,6 +60,9 @@ public class InvoiceScheduleGroup extends BaseTimeEntity {
 
     @Column(length = 200)
     private String description;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @Builder(access = AccessLevel.PRIVATE)
     public InvoiceScheduleGroup(
@@ -104,10 +111,24 @@ public class InvoiceScheduleGroup extends BaseTimeEntity {
     /**
      * 다음 실행 시간 계산 (RECURRING인 경우에만 사용)
      */
-    public java.time.LocalDateTime calculateNextScheduledAt(java.time.LocalDateTime currentScheduledAt) {
+    public LocalDateTime calculateNextScheduledAt(LocalDateTime currentScheduledAt) {
         if (scheduleType != ScheduleType.RECURRING) {
             throw new IllegalStateException("ONCE 타입은 다음 실행 시간을 계산할 수 없습니다.");
         }
         return intervalUnit.calculateNext(currentScheduledAt, intervalValue);
+    }
+
+    /**
+     * Soft Delete 수행
+     */
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 삭제 여부 확인
+     */
+    public boolean isDeleted() {
+        return this.deletedAt != null;
     }
 }
