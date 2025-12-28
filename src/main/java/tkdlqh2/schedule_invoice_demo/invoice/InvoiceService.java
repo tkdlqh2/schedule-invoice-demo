@@ -7,6 +7,8 @@ import tkdlqh2.schedule_invoice_demo.corp.Corp;
 import tkdlqh2.schedule_invoice_demo.corp.CorpService;
 import tkdlqh2.schedule_invoice_demo.invoice.command.SendInvoiceImmediatelyCommand;
 import tkdlqh2.schedule_invoice_demo.invoice.dto.SendInvoiceImmediatelyResponse;
+import tkdlqh2.schedule_invoice_demo.outbox.OutboxEvent;
+import tkdlqh2.schedule_invoice_demo.outbox.OutboxEventRepository;
 import tkdlqh2.schedule_invoice_demo.wallet.Wallet;
 import tkdlqh2.schedule_invoice_demo.wallet.WalletRepository;
 import tkdlqh2.schedule_invoice_demo.wallet.WalletTransaction;
@@ -21,20 +23,21 @@ public class InvoiceService {
     private final CorpService corpService;
     private final WalletRepository walletRepository;
     private final WalletTransactionRepository walletTransactionRepository;
-    private final InvoiceNotificationSender invoiceNotificationSender;
+    private final OutboxEventRepository outboxEventRepository;
 
     /**
-     * 즉시 발송 Invoice 생성
+     * 즉시 발송 Invoice 생성 (Outbox Pattern 적용)
      * <p>
      * 처리 순서:
      * 1. Corp 조회
      * 2. Wallet 조회 및 잔액 확인 (락 획득)
      * 3. Invoice 생성 (PENDING)
      * 4. Wallet 차감 + WalletTransaction 생성 (INVOICE_USE)
-     * 5. 발송 시도
-     * 6-a. 발송 성공: Invoice 상태 변경 (SENT)
-     * 6-b. 발송 실패: Invoice 상태 변경 (FAILED) + Wallet 환불
+     * 5. OutboxEvent 생성 (발송 요청 이벤트)
+     * 6. 트랜잭션 커밋
      * 7. 응답 반환
+     * <p>
+     * 실제 외부 발송은 OutboxEventProcessor가 비동기로 처리합니다.
      */
     @Transactional
     public SendInvoiceImmediatelyResponse sendInvoiceImmediately(SendInvoiceImmediatelyCommand command) {
@@ -64,33 +67,14 @@ public class InvoiceService {
                 command.amount(),
                 invoice.getId()
         );
-        useTransaction = walletTransactionRepository.save(useTransaction);
+        walletTransactionRepository.save(useTransaction);
 
-        // 5. 발송 시도
-        boolean sendSuccess = invoiceNotificationSender.send(invoice);
+        // 5. OutboxEvent 생성 (발송 요청 이벤트)
+        // 실제 외부 발송은 OutboxEventProcessor가 비동기로 처리
+        OutboxEvent outboxEvent = OutboxEvent.forInvoiceSendRequest(invoice.getId());
+        outboxEventRepository.save(outboxEvent);
 
-        // 6. 발송 결과에 따른 처리
-        if (sendSuccess) {
-            // 6-a. 발송 성공: Invoice 상태 변경 (SENT)
-            invoice.markAsSent();
-        } else {
-            // 6-b. 발송 실패: Invoice 상태 변경 (FAILED) + Wallet 환불
-            invoice.markAsFailed();
-
-            // Wallet 환불
-            wallet.increaseBalance(command.amount());
-
-            // 환불 트랜잭션 생성
-            WalletTransaction refundTransaction = WalletTransaction.createInvoiceRefund(
-                    wallet,
-                    command.amount(),
-                    invoice.getId(),
-                    useTransaction.getId()  // 원본 사용 트랜잭션 ID
-            );
-            walletTransactionRepository.save(refundTransaction);
-        }
-
-        // 7. 응답 반환
+        // 6. 응답 반환 (Invoice는 PENDING 상태로 반환)
         return SendInvoiceImmediatelyResponse.from(invoice, wallet.getBalance());
     }
 }

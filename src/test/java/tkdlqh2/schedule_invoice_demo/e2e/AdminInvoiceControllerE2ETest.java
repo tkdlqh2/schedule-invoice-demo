@@ -5,10 +5,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.jdbc.Sql;
 import tkdlqh2.schedule_invoice_demo.invoice.InvoiceRepository;
-import tkdlqh2.schedule_invoice_demo.mock.MockNotificationRepository;
+import tkdlqh2.schedule_invoice_demo.outbox.OutboxEvent;
+import tkdlqh2.schedule_invoice_demo.outbox.OutboxEventRepository;
+import tkdlqh2.schedule_invoice_demo.outbox.OutboxEventStatus;
+import tkdlqh2.schedule_invoice_demo.outbox.OutboxEventType;
 import tkdlqh2.schedule_invoice_demo.wallet.WalletRepository;
 import tkdlqh2.schedule_invoice_demo.wallet.WalletTransactionRepository;
 
+import java.util.List;
 import java.util.Map;
 
 import static io.restassured.RestAssured.given;
@@ -30,10 +34,10 @@ class AdminInvoiceControllerE2ETest extends BaseE2ETest {
     private WalletTransactionRepository walletTransactionRepository;
 
     @Autowired
-    private MockNotificationRepository mockNotificationRepository;
+    private OutboxEventRepository outboxEventRepository;
 
     @Test
-    @DisplayName("Invoice 즉시 발송 - 성공")
+    @DisplayName("Invoice 즉시 발송 - 성공 (Outbox Pattern)")
     @Sql(scripts = "/sql/test-data-invoice.sql", executionPhase = BEFORE_TEST_METHOD)
     void sendInvoiceImmediately_Success() {
         // given - 잔액이 50000원인 기관
@@ -46,8 +50,8 @@ class AdminInvoiceControllerE2ETest extends BaseE2ETest {
                 "description", "2024년 3월 수업료"
         );
 
-        // when & then
-        given()
+        // when
+        Long invoiceId = given()
                 .spec(spec)
                 .pathParam("corpId", corpId)
                 .body(request)
@@ -58,13 +62,23 @@ class AdminInvoiceControllerE2ETest extends BaseE2ETest {
                 .body("invoiceId", notNullValue())
                 .body("corpId", equalTo(corpId))
                 .body("corpName", equalTo("Invoice 테스트 기관 A"))
-                .body("status", equalTo("SENT"))
+                .body("status", equalTo("PENDING"))  // Outbox Pattern: 비동기 처리 대기
                 .body("studentName", equalTo("홍길동"))
                 .body("guardianPhone", equalTo("010-1234-5678"))
                 .body("amount", equalTo(10000))
                 .body("description", equalTo("2024년 3월 수업료"))
                 .body("remainingWalletBalance", equalTo(40000))  // 50000 - 10000
-                .body("createdAt", notNullValue());
+                .body("createdAt", notNullValue())
+                .extract()
+                .jsonPath().getLong("invoiceId");
+
+        // then - OutboxEvent가 생성되었는지 확인
+        List<OutboxEvent> events = outboxEventRepository.findByAggregateTypeAndAggregateId("INVOICE", invoiceId);
+        assert events.size() == 1 : "OutboxEvent가 생성되어야 합니다.";
+
+        OutboxEvent event = events.get(0);
+        assert event.getEventType() == OutboxEventType.INVOICE_SEND_REQUESTED : "EventType이 INVOICE_SEND_REQUESTED여야 합니다.";
+        assert event.getStatus() == OutboxEventStatus.PENDING : "OutboxEvent 상태가 PENDING이어야 합니다.";
     }
 
     @Test
@@ -212,37 +226,6 @@ class AdminInvoiceControllerE2ETest extends BaseE2ETest {
     }
 
     @Test
-    @DisplayName("Invoice 발송 후 MockNotification 생성 확인")
-    @Sql(scripts = "/sql/test-data-invoice.sql", executionPhase = BEFORE_TEST_METHOD)
-    void sendInvoiceImmediately_MockNotificationCreated() {
-        // given
-        String corpId = "66666666-6666-6666-6666-666666666666";
-
-        Map<String, Object> request = Map.of(
-                "studentName", "테스트학생",
-                "guardianPhone", "010-9999-9999",
-                "amount", 7000L,
-                "description", "Mock 발송 테스트"
-        );
-
-        // when
-        Long invoiceId = given()
-                .spec(spec)
-                .pathParam("corpId", corpId)
-                .body(request)
-        .when()
-                .post("/admin/corps/{corpId}/invoices/send-now")
-        .then()
-                .statusCode(200)
-                .extract()
-                .jsonPath().getLong("invoiceId");
-
-        // then - MockNotification이 생성되었는지 확인
-        long mockNotificationCount = mockNotificationRepository.findByInvoiceId(invoiceId).size();
-        assert mockNotificationCount == 1 : "MockNotification이 생성되어야 합니다.";
-    }
-
-    @Test
     @DisplayName("Invoice 발송 후 WalletTransaction 생성 확인")
     @Sql(scripts = "/sql/test-data-invoice.sql", executionPhase = BEFORE_TEST_METHOD)
     void sendInvoiceImmediately_WalletTransactionCreated() {
@@ -271,106 +254,6 @@ class AdminInvoiceControllerE2ETest extends BaseE2ETest {
         // then - WalletTransaction이 생성되었는지 확인
         long transactionCount = walletTransactionRepository.findByInvoiceId(invoiceId).size();
         assert transactionCount == 1 : "WalletTransaction (INVOICE_USE)이 생성되어야 합니다.";
-    }
-
-    @Test
-    @DisplayName("Invoice 발송 실패 - Invoice 상태 FAILED 및 Wallet 환불")
-    @Sql(scripts = "/sql/test-data-invoice.sql", executionPhase = BEFORE_TEST_METHOD)
-    void sendInvoiceImmediately_SendFailed_RefundWallet() {
-        // given - 잔액이 50000원인 기관
-        String corpId = "66666666-6666-6666-6666-666666666666";
-
-        Map<String, Object> request = Map.of(
-                "studentName", "발송실패테스트",
-                "guardianPhone", "000-1234-5678",  // "000"으로 시작하면 발송 실패
-                "amount", 15000L,
-                "description", "발송 실패 시뮬레이션"
-        );
-
-        // when
-        given()
-                .spec(spec)
-                .pathParam("corpId", corpId)
-                .body(request)
-        .when()
-                .post("/admin/corps/{corpId}/invoices/send-now")
-        .then()
-                .statusCode(200)
-                .body("status", equalTo("FAILED"))  // 발송 실패로 FAILED 상태
-                .body("remainingWalletBalance", equalTo(50000));  // 환불되어 원래 잔액 유지
-
-        // then - Wallet 잔액이 환불되었는지 확인
-        given()
-                .pathParam("corpId", corpId)
-        .when()
-                .get("/admin/corps/{corpId}/wallet")
-        .then()
-                .statusCode(200)
-                .body("balance", equalTo(50000));  // 차감 후 환불되어 원래 잔액
-    }
-
-    @Test
-    @DisplayName("Invoice 발송 실패 - 환불 트랜잭션 생성 확인")
-    @Sql(scripts = "/sql/test-data-invoice.sql", executionPhase = BEFORE_TEST_METHOD)
-    void sendInvoiceImmediately_SendFailed_RefundTransactionCreated() {
-        // given
-        String corpId = "66666666-6666-6666-6666-666666666666";
-
-        Map<String, Object> request = Map.of(
-                "studentName", "환불테스트",
-                "guardianPhone", "000-9999-9999",  // "000"으로 시작하면 발송 실패
-                "amount", 20000L,
-                "description", "환불 트랜잭션 테스트"
-        );
-
-        // when
-        Long invoiceId = given()
-                .spec(spec)
-                .pathParam("corpId", corpId)
-                .body(request)
-        .when()
-                .post("/admin/corps/{corpId}/invoices/send-now")
-        .then()
-                .statusCode(200)
-                .body("status", equalTo("FAILED"))
-                .extract()
-                .jsonPath().getLong("invoiceId");
-
-        // then - WalletTransaction이 2개 생성되었는지 확인 (INVOICE_USE + INVOICE_REFUND)
-        long transactionCount = walletTransactionRepository.findByInvoiceId(invoiceId).size();
-        assert transactionCount == 2 : "WalletTransaction (INVOICE_USE + INVOICE_REFUND)이 생성되어야 합니다.";
-    }
-
-    @Test
-    @DisplayName("Invoice 발송 실패 - MockNotification 생성되지 않음")
-    @Sql(scripts = "/sql/test-data-invoice.sql", executionPhase = BEFORE_TEST_METHOD)
-    void sendInvoiceImmediately_SendFailed_NoMockNotification() {
-        // given
-        String corpId = "66666666-6666-6666-6666-666666666666";
-
-        Map<String, Object> request = Map.of(
-                "studentName", "발송실패",
-                "guardianPhone", "000-5555-5555",  // "000"으로 시작하면 발송 실패
-                "amount", 8000L,
-                "description", "MockNotification 미생성 테스트"
-        );
-
-        // when
-        Long invoiceId = given()
-                .spec(spec)
-                .pathParam("corpId", corpId)
-                .body(request)
-        .when()
-                .post("/admin/corps/{corpId}/invoices/send-now")
-        .then()
-                .statusCode(200)
-                .body("status", equalTo("FAILED"))
-                .extract()
-                .jsonPath().getLong("invoiceId");
-
-        // then - MockNotification이 생성되지 않았는지 확인
-        long mockNotificationCount = mockNotificationRepository.findByInvoiceId(invoiceId).size();
-        assert mockNotificationCount == 0 : "발송 실패 시 MockNotification이 생성되지 않아야 합니다.";
     }
 
     /**
