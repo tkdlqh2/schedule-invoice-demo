@@ -20,8 +20,8 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
      * - 한 번에 최대 10개까지만 가져와서 메모리 효율적
      * - 각 인스턴스가 서로 다른 이벤트를 처리하여 효율적
      */
-    @Query(value = "SELECT * FROM outbox_events WHERE status = :status ORDER BY created_at ASC FOR UPDATE SKIP LOCKED LIMIT 10", nativeQuery = true)
-    List<OutboxEvent> findPendingEventsWithLock(@Param("status") OutboxEventStatus status);
+    @Query(value = "SELECT * FROM outbox_events WHERE status = 'PENDING' ORDER BY created_at ASC FOR UPDATE SKIP LOCKED LIMIT 10", nativeQuery = true)
+    List<OutboxEvent> findPendingEventsWithLock();
 
     /**
      * 특정 타입의 이벤트 조회

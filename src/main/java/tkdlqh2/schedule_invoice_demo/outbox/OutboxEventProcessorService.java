@@ -41,15 +41,18 @@ public class OutboxEventProcessorService {
     }
 
     /**
-     * 모든 PENDING 이벤트를 트랜잭션 내에서 조회
+     * 모든 PENDING 이벤트 처리
+     * <p>
+     * Non-transactional: 각 이벤트가 독립적인 트랜잭션으로 처리됨
+     * 락 충돌 방지를 위해 외부 트랜잭션 없음
      */
-    @Transactional
     public void processAllPendingEvents() {
-        List<OutboxEvent> pendingEvents = outboxEventRepository.findPendingEventsWithLock(OutboxEventStatus.PENDING);
+        // 1. 별도 트랜잭션에서 조회 + 락 획득 + 즉시 상태 변경
+        List<OutboxEvent> pendingEvents = self.findAndMarkEventsAsProcessing();
 
+        // 2. 락이 해제된 후, 각 이벤트를 독립적인 트랜잭션으로 처리
         for (OutboxEvent event : pendingEvents) {
             try {
-                // 각 이벤트를 별도의 트랜잭션으로 처리 (self-invocation 회피)
                 self.processEventInNewTransaction(event);
             } catch (Exception e) {
                 log.error("Failed to process outbox event: {}", event.getId(), e);
@@ -58,11 +61,35 @@ public class OutboxEventProcessorService {
     }
 
     /**
+     * PENDING 이벤트 조회 및 PROCESSING 상태로 즉시 변경
+     * <p>
+     * 트랜잭션 내에서:
+     * 1. FOR UPDATE SKIP LOCKED로 락 획득
+     * 2. PROCESSING 상태로 즉시 변경 (다른 인스턴스가 가져가지 않도록)
+     * 3. 트랜잭션 커밋 (락 해제)
+     */
+    @Transactional
+    public List<OutboxEvent> findAndMarkEventsAsProcessing() {
+        List<OutboxEvent> events = outboxEventRepository.findPendingEventsWithLock();
+
+        // 즉시 PROCESSING 상태로 변경하여 다른 인스턴스가 가져가지 않도록
+        for (OutboxEvent event : events) {
+            event.startProcessing();
+            outboxEventRepository.save(event);
+        }
+
+        return events;
+        // 트랜잭션 종료 시 락 해제, 하지만 이미 PROCESSING 상태이므로 다른 인스턴스가 가져가지 않음
+    }
+
+    /**
      * 개별 이벤트 처리 (새로운 트랜잭션)
      * <p>
      * REQUIRES_NEW: 항상 새로운 트랜잭션 생성
      * - 각 이벤트 처리가 독립적인 트랜잭션
      * - 한 이벤트 실패가 다른 이벤트에 영향 없음
+     * <p>
+     * 주의: 이미 PROCESSING 상태로 변경된 이벤트를 받음
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processEventInNewTransaction(OutboxEvent event) {
@@ -74,10 +101,6 @@ public class OutboxEventProcessorService {
         if (handler == null) {
             throw new IllegalArgumentException("No handler found for event type: " + event.getEventType());
         }
-
-        // 처리 시작 표시
-        event.startProcessing();
-        outboxEventRepository.save(event);
 
         try {
             // Handler에게 처리 위임
