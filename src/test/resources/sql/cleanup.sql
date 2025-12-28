@@ -1,2 +1,10 @@
 -- 테스트 데이터 정리 (순서 중요: 외래키 제약조건 고려)
-TRUNCATE TABLE mock_notifications, outbox_events, invoice_schedules, invoice_schedule_groups, invoices, wallet_transactions, wallets, corps RESTART IDENTITY CASCADE;
+-- 의존성이 높은 테이블부터 순서대로 삭제
+TRUNCATE TABLE mock_notifications RESTART IDENTITY CASCADE;
+TRUNCATE TABLE outbox_events RESTART IDENTITY CASCADE;
+TRUNCATE TABLE invoice_schedules RESTART IDENTITY CASCADE;
+TRUNCATE TABLE invoice_schedule_groups RESTART IDENTITY CASCADE;
+TRUNCATE TABLE invoices RESTART IDENTITY CASCADE;
+TRUNCATE TABLE wallet_transactions RESTART IDENTITY CASCADE;
+TRUNCATE TABLE wallets RESTART IDENTITY CASCADE;
+TRUNCATE TABLE corps RESTART IDENTITY CASCADE;
