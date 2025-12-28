@@ -3,10 +3,9 @@ package tkdlqh2.schedule_invoice_demo.outbox.handler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.annotation.Transactional;
-import tkdlqh2.schedule_invoice_demo.e2e.BaseE2ETest;
+import tkdlqh2.schedule_invoice_demo.integration.BaseIntegrationTest;
 import tkdlqh2.schedule_invoice_demo.invoice.Invoice;
 import tkdlqh2.schedule_invoice_demo.invoice.InvoiceRepository;
 import tkdlqh2.schedule_invoice_demo.invoice.InvoiceStatus;
@@ -29,7 +28,7 @@ import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TE
 @Transactional
 @Sql(scripts = "/sql/cleanup.sql", executionPhase = BEFORE_TEST_METHOD)
 @DisplayName("InvoiceSendRequestedEventHandler 테스트")
-class InvoiceSendRequestedEventHandlerTest extends BaseE2ETest {
+class InvoiceSendRequestedEventHandlerTest extends BaseIntegrationTest {
 
     @Autowired
     private InvoiceSendRequestedEventHandler handler;
