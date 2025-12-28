@@ -71,6 +71,13 @@ public class Invoice extends BaseTimeEntity {
     }
 
     /**
+     * 스케줄로부터 Invoice 생성
+     */
+    public static Invoice createFromSchedule(Corp corp, String studentName, String guardianPhone, Long amount, String description, Long scheduleId) {
+        return new Invoice(corp, studentName, guardianPhone, amount, description, scheduleId);
+    }
+
+    /**
      * 발송 완료 처리
      */
     public void markAsSent() {

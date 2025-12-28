@@ -1,5 +1,8 @@
 package tkdlqh2.schedule_invoice_demo.schedule;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -29,6 +32,18 @@ public interface InvoiceScheduleRepository extends JpaRepository<InvoiceSchedule
     );
 
     /**
+     * 실행 대기 중인 스케줄 조회 (페이징) - Spring Batch용
+     * scheduleGroup과 corp를 JOIN FETCH하여 함께 로드
+     */
+    @EntityGraph(attributePaths = {"scheduleGroup", "scheduleGroup.corp"})
+    @Query("SELECT s FROM InvoiceSchedule s WHERE s.status = :status AND s.scheduledAt <= :executeAt")
+    Page<InvoiceSchedule> findByStatusAndScheduledAtBeforeOrderByScheduledAtAsc(
+            @Param("status") ScheduleStatus status,
+            @Param("executeAt") LocalDateTime executeAt,
+            Pageable pageable
+    );
+
+    /**
      * 실행 대기 중인 스케줄 조회 (비관적 락)
      * 동시성 제어를 위한 잠금
      */
@@ -47,4 +62,15 @@ public interface InvoiceScheduleRepository extends JpaRepository<InvoiceSchedule
             @Param("scheduleGroupId") Long scheduleGroupId,
             @Param("status") ScheduleStatus status
     );
+
+    /**
+     * Status로 스케줄 목록 조회
+     */
+    List<InvoiceSchedule> findByStatus(ScheduleStatus status);
+
+    /**
+     * ScheduleGroup ID로 스케줄 목록 조회
+     */
+    @Query("SELECT s FROM InvoiceSchedule s WHERE s.scheduleGroup.id = :scheduleGroupId")
+    List<InvoiceSchedule> findByScheduleGroupId(@Param("scheduleGroupId") Long scheduleGroupId);
 }
