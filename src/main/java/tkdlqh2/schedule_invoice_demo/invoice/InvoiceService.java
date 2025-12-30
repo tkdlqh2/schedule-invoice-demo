@@ -19,6 +19,8 @@ import tkdlqh2.schedule_invoice_demo.wallet.WalletTransactionRepository;
 @Transactional(readOnly = true)
 public class InvoiceService {
 
+    private static final long INVOICE_SEND_COST = 100L;
+
     private final InvoiceRepository invoiceRepository;
     private final CorpService corpService;
     private final WalletRepository walletRepository;
@@ -48,10 +50,10 @@ public class InvoiceService {
         Wallet wallet = walletRepository.findByCorpIdWithLock(command.corpId())
                 .orElseThrow(() -> new IllegalArgumentException("Wallet이 존재하지 않습니다. Corp ID: " + command.corpId()));
 
-        if (!wallet.hasEnoughBalance(command.amount())) {
+        if (!wallet.hasEnoughBalance(INVOICE_SEND_COST)) {
             throw new IllegalArgumentException(
-                    String.format("잔액이 부족합니다. 현재 잔액: %d, 필요 금액: %d",
-                            wallet.getBalance(), command.amount())
+                    String.format("잔액이 부족합니다. 현재 잔액: %d, 필요 금액: %d (건당 발송 비용)",
+                            wallet.getBalance(), INVOICE_SEND_COST)
             );
         }
 
@@ -60,11 +62,11 @@ public class InvoiceService {
         invoice = invoiceRepository.save(invoice);
 
         // 4. Wallet 차감 + WalletTransaction 생성 (INVOICE_USE)
-        wallet.decreaseBalance(command.amount());
+        wallet.decreaseBalance(INVOICE_SEND_COST);
 
         WalletTransaction useTransaction = WalletTransaction.createInvoiceUse(
                 wallet,
-                command.amount(),
+                INVOICE_SEND_COST,
                 invoice.getId()
         );
         walletTransactionRepository.save(useTransaction);
