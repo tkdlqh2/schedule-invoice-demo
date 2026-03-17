@@ -1,11 +1,10 @@
 -- 테스트 데이터 정리 (순서 중요: 외래키 제약조건 고려)
-DELETE FROM mock_notifications;
-DELETE FROM outbox_events;
-DELETE FROM invoices;
-DELETE FROM wallet_transactions;
-DELETE FROM wallets;
-DELETE FROM corps;
-
--- Auto increment 초기화 (PostgreSQL)
-ALTER SEQUENCE IF EXISTS wallets_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS invoices_id_seq RESTART WITH 1;
+-- 의존성이 높은 테이블부터 순서대로 삭제
+TRUNCATE TABLE mock_notifications RESTART IDENTITY CASCADE;
+TRUNCATE TABLE outbox_events RESTART IDENTITY CASCADE;
+TRUNCATE TABLE invoice_schedules RESTART IDENTITY CASCADE;
+TRUNCATE TABLE invoice_schedule_groups RESTART IDENTITY CASCADE;
+TRUNCATE TABLE invoices RESTART IDENTITY CASCADE;
+TRUNCATE TABLE wallet_transactions RESTART IDENTITY CASCADE;
+TRUNCATE TABLE wallets RESTART IDENTITY CASCADE;
+TRUNCATE TABLE corps RESTART IDENTITY CASCADE;

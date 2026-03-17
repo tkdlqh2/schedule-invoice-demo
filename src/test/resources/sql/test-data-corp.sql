@@ -1,7 +1,13 @@
 -- 기존 데이터 정리 후 삽입
-DELETE FROM wallet_transactions;
-DELETE FROM wallets;
-DELETE FROM corps;
+-- 의존성이 높은 테이블부터 순서대로 삭제
+TRUNCATE TABLE mock_notifications RESTART IDENTITY CASCADE;
+TRUNCATE TABLE outbox_events RESTART IDENTITY CASCADE;
+TRUNCATE TABLE invoice_schedules RESTART IDENTITY CASCADE;
+TRUNCATE TABLE invoice_schedule_groups RESTART IDENTITY CASCADE;
+TRUNCATE TABLE invoices RESTART IDENTITY CASCADE;
+TRUNCATE TABLE wallet_transactions RESTART IDENTITY CASCADE;
+TRUNCATE TABLE wallets RESTART IDENTITY CASCADE;
+TRUNCATE TABLE corps RESTART IDENTITY CASCADE;
 
 -- 테스트용 기관 데이터
 INSERT INTO corps (id, name, business_number, contact_phone, created_at, updated_at)
